@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://jamesc0ry.github.io/loop-alarm-site/sitemap.xml
