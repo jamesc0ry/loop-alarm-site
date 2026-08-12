@@ -28,7 +28,7 @@ Before changing the privacy policy, verify it against the app release being docu
 
 ## Deployment
 
-The [Pages workflow](.github/workflows/pages.yml) validates pull requests without publishing. A push to `main` validates again, packages the static root, and deploys through the protected `github-pages` environment. The deployment job alone receives `pages: write` and `id-token: write`; all actions are pinned to full commit SHAs.
+The [Pages workflow](.github/workflows/pages.yml) validates pull requests without publishing. A push to `main` validates again, packages the static root, and deploys through the `github-pages` environment. The deployment job alone receives `pages: write` and `id-token: write`; all actions are pinned to full commit SHAs.
 
 Repository Pages settings are managed separately from this repository. Do not add manual deployment triggers without reviewing the publication controls.
 
