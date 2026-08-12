@@ -102,6 +102,18 @@ class CheckSiteTests(unittest.TestCase):
 
         self.assert_has_error(errors, "broken internal link 'missing/'")
 
+    def test_unlisted_html_page_links_are_checked(self) -> None:
+        extra_page = self.site / "unlisted.html"
+        shutil.copyfile(self.site / "index.html", extra_page)
+        extra_page.write_text(
+            extra_page.read_text(encoding="utf-8").replace('href="support/"', 'href="missing/"'),
+            encoding="utf-8",
+        )
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "unlisted.html: broken internal link 'missing/'")
+
     def test_broken_fragment_is_rejected(self) -> None:
         self.replace("privacy/index.html", 'href="#app-data"', 'href="#missing"')
 

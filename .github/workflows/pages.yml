@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate site
@@ -48,9 +52,6 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
     steps:
       - name: Deploy to GitHub Pages
         id: deployment

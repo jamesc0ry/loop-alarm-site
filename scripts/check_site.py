@@ -144,15 +144,18 @@ def check_site(site: Path = SITE) -> list[str]:
         pages[relative] = parser
         sources[relative] = source
 
-    for relative, (expected_title, expected_canonical) in EXPECTED.items():
-        parser = pages.get(relative)
-        if parser is None:
+    for relative in EXPECTED:
+        if relative not in pages:
             fail(errors, relative, "required file is missing")
-            continue
 
+    for relative, parser in pages.items():
+        expected = EXPECTED.get(relative)
         source = sources[relative]
-        if parser.title != expected_title:
-            fail(errors, relative, f"expected title {expected_title!r}, found {parser.title!r}")
+
+        if expected is not None:
+            expected_title, expected_canonical = expected
+            if parser.title != expected_title:
+                fail(errors, relative, f"expected title {expected_title!r}, found {parser.title!r}")
 
         tag_names = [tag for tag, _ in parser.tags]
         if tag_names.count("h1") != 1:
@@ -193,12 +196,14 @@ def check_site(site: Path = SITE) -> list[str]:
             for tag, attrs in parser.tags
             if tag == "link" and "canonical" in attrs.get("rel", "").split()
         ]
-        if canonical_links != [expected_canonical]:
+        if expected is not None and canonical_links != [expected_canonical]:
             fail(
                 errors,
                 relative,
                 f"expected one canonical URL {expected_canonical!r}, found {canonical_links!r}",
             )
+        elif expected is None and len(canonical_links) != 1:
+            fail(errors, relative, "must contain exactly one canonical URL")
 
         for tag, attrs in parser.tags:
             source_url = attrs.get("src")
@@ -348,7 +353,7 @@ def main() -> int:
             print(f"- {error}", file=sys.stderr)
         return 1
 
-    print(f"Loop Alarm site checks passed for {len(EXPECTED)} pages.")
+    print("Loop Alarm site checks passed.")
     return 0
 
 
