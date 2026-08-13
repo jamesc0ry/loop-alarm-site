@@ -91,6 +91,7 @@ footer {
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
   color: var(--text);
   font-size: 1rem;
   font-weight: 700;
@@ -124,6 +125,11 @@ footer nav {
 
 .site-header nav a,
 footer nav a {
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
   color: var(--muted);
   font-size: 0.9rem;
   font-weight: 650;
@@ -164,6 +170,7 @@ footer nav a[aria-current="page"] {
   height: 100%;
   overflow: visible;
   pointer-events: none;
+  transition: opacity 160ms ease, visibility 160ms ease;
 }
 
 .connectors path {
@@ -192,6 +199,13 @@ footer nav a[aria-current="page"] {
   padding: 0;
   list-style: none;
   pointer-events: none;
+  transition: opacity 160ms ease, visibility 160ms ease;
+}
+
+.watch-stage:has(.information-control[open]) .connectors,
+.watch-stage:has(.information-control[open]) .annotations {
+  visibility: hidden;
+  opacity: 0;
 }
 
 .annotation {
@@ -227,7 +241,7 @@ footer nav a[aria-current="page"] {
   left: 16px;
 }
 
-.annotation-support {
+.annotation-information {
   top: 51px;
   right: 16px;
 }
@@ -238,14 +252,9 @@ footer nav a[aria-current="page"] {
   width: 190px;
 }
 
-.annotation-hourly {
-  top: 287px;
-  right: 16px;
-}
-
 .annotation-upcoming {
-  top: 405px;
-  left: 20px;
+  top: 367px;
+  right: 16px;
 }
 
 .watch-wrap {
@@ -355,41 +364,133 @@ footer nav a[aria-current="page"] {
   box-shadow: 0 1px 4px rgb(0 0 0 / 44%);
 }
 
-.support-envelope {
+.information-control {
   position: absolute;
+  z-index: 5;
+  inset: 0;
+  border-radius: 21% / 17%;
+  pointer-events: none;
+}
+
+.information-control summary {
+  position: absolute;
+  z-index: 2;
   top: 0;
-  left: 74.63%;
+  right: 3.91%;
   display: grid;
-  width: 21.46%;
+  width: max(21.46%, 44px);
+  min-width: 44px;
+  min-height: 44px;
   aspect-ratio: 1;
   place-items: center;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   background: rgb(99 230 190 / 14%);
   color: var(--mint);
+  cursor: pointer;
+  list-style: none;
+  pointer-events: auto;
 }
 
-.support-envelope::before {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: max(100%, 44px);
-  height: max(100%, 44px);
-  content: "";
+.information-control summary::-webkit-details-marker {
+  display: none;
 }
 
-.support-envelope:hover {
+.information-control summary:hover {
   background: rgb(99 230 190 / 22%);
 }
 
-.support-envelope:focus-visible {
-  outline-width: 2px;
-  outline-offset: -2px;
+.information-control summary:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -3px;
   border-radius: 50%;
 }
 
-.support-envelope svg {
-  width: 33%;
+.information-icon {
+  width: 39%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 1.75;
+}
+
+.information-icon .information-dot {
   fill: currentColor;
+  stroke: none;
+}
+
+.information-done-label,
+.information-close-label {
+  display: none;
+}
+
+.information-screen {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  gap: clamp(4px, 3cqw, 8px);
+  padding: 18% 7% 23%;
+  border-radius: inherit;
+  background: #000;
+  text-align: center;
+  pointer-events: auto;
+}
+
+.information-control:not([open]) .information-screen {
+  display: none;
+}
+
+.information-screen h2 {
+  margin: 0 0 2px;
+  font-size: clamp(0.9rem, 6.4cqw, 1.02rem);
+  line-height: 1.2;
+}
+
+.information-screen a {
+  display: grid;
+  min-height: 44px;
+  align-items: center;
+  color: var(--mint);
+  font-size: clamp(0.75rem, 5.1cqw, 0.82rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.information-control[open] summary {
+  top: 75%;
+  left: 24%;
+  right: auto;
+  width: 52%;
+  min-width: 44px;
+  min-height: 44px;
+  aspect-ratio: auto;
+  border-radius: 999px;
+  background: var(--mint);
+  color: #000;
+  font-size: clamp(0.75rem, 5.1cqw, 0.82rem);
+  font-weight: 650;
+}
+
+.information-control[open] summary:hover {
+  background: var(--mint-soft);
+}
+
+.information-control[open] summary:focus-visible {
+  border-radius: 999px;
+}
+
+.information-control[open] .information-icon,
+.information-control[open] .information-open-label {
+  display: none;
+}
+
+.information-control[open] .information-done-label,
+.information-control[open] .information-close-label {
+  display: block;
 }
 
 .interval-dial {
@@ -411,7 +512,7 @@ footer nav a[aria-current="page"] {
   line-height: 1;
 }
 
-.hourly-unit {
+.interval-unit {
   position: absolute;
   top: 61.35%;
   left: 0;
@@ -420,18 +521,9 @@ footer nav a[aria-current="page"] {
   height: 9.56%;
   align-items: center;
   justify-content: center;
-  gap: 1.7cqw;
   color: rgb(235 235 245 / 60%);
   font-size: 5.1cqw;
   line-height: 1;
-}
-
-.hourly-minute {
-  padding: 1.28cqw 2.98cqw;
-  border-radius: 7px;
-  background: rgb(99 230 190 / 30%);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 .upcoming-status {
@@ -629,29 +721,23 @@ footer p {
     left: 2.78%;
   }
 
-  .annotation-support {
+  .annotation-information {
     top: 2.73%;
     right: 2.78%;
   }
 
   .annotation-interval,
-  .annotation-hourly,
   .annotation-upcoming {
     top: 74.24%;
-    width: 30%;
+    width: 41.67%;
   }
 
   .annotation-interval {
-    left: 1.67%;
-  }
-
-  .annotation-hourly {
-    right: auto;
-    left: 35%;
+    left: 2.78%;
   }
 
   .annotation-upcoming {
-    right: 1.67%;
+    right: 2.78%;
     left: auto;
   }
 
@@ -724,7 +810,8 @@ footer p {
 @media (forced-colors: active) {
   .watch-case,
   .watch-screen,
-  .annotation {
+  .annotation,
+  .information-screen {
     border: 1px solid CanvasText;
   }
 

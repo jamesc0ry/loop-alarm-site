@@ -25,6 +25,7 @@ EXPECTED = {
 }
 APPROVED_EMAIL = "loopalarm.help@outlook.com"
 APPROVED_MAILTO = f"mailto:{APPROVED_EMAIL}"
+APPROVED_SUPPORT_MAILTO = f"{APPROVED_MAILTO}?subject=Loop%20Alarm%20Support"
 OLD_CONTACT_PLACEHOLDER = "Support contact will be added before public launch."
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 STALE_PUBLIC_MARKERS = (
@@ -234,7 +235,7 @@ def check_site(site: Path = SITE) -> list[str]:
         for href in parser.links:
             parsed = urlparse(href)
             if parsed.scheme == "mailto":
-                if href != APPROVED_MAILTO:
+                if href not in {APPROVED_MAILTO, APPROVED_SUPPORT_MAILTO}:
                     fail(errors, relative, f"unexpected contact link: {href}")
                 continue
             if parsed.scheme or parsed.netloc:
@@ -300,27 +301,50 @@ def check_site(site: Path = SITE) -> list[str]:
             "watch-screen",
             "digital-crown",
             "screen-toggle",
-            "support-envelope",
+            "information-control",
+            "information-icon",
+            "information-screen",
+            "information-email",
+            "information-site",
             "interval-dial",
-            "hourly-unit",
+            "interval-unit",
             "upcoming-status",
             "annotation-toggle",
-            "annotation-support",
+            "annotation-information",
             "annotation-interval",
-            "annotation-hourly",
             "annotation-upcoming",
         )
         for class_name in required_classes:
             if len(tags_with_class(home, class_name)) != 1:
                 fail(errors, "index.html", f"expected exactly one .{class_name}")
 
-        support_links = [
+        information_controls = tags_with_class(home, "information-control")
+        if len(information_controls) != 1 or information_controls[0][0] != "details":
+            fail(errors, "index.html", "information control must be one native <details> disclosure")
+
+        information_summaries = [
             attrs
-            for tag, attrs in tags_with_class(home, "support-envelope")
-            if tag == "a" and attrs.get("href") == APPROVED_MAILTO
+            for tag, attrs in home.tags
+            if tag == "summary" and attrs.get("aria-controls") == "app-information"
         ]
-        if len(support_links) != 1:
-            fail(errors, "index.html", "support envelope must link directly to the approved email")
+        if len(information_summaries) != 1:
+            fail(errors, "index.html", "information control must expose one labelled summary")
+
+        information_email_links = [
+            attrs
+            for tag, attrs in tags_with_class(home, "information-email")
+            if tag == "a" and attrs.get("href") == APPROVED_SUPPORT_MAILTO
+        ]
+        if len(information_email_links) != 1:
+            fail(errors, "index.html", "information screen email must match the app support link")
+
+        information_site_links = [
+            attrs
+            for tag, attrs in tags_with_class(home, "information-site")
+            if tag == "a" and attrs.get("href") == PUBLIC_BASE
+        ]
+        if len(information_site_links) != 1:
+            fail(errors, "index.html", "information screen website must match the public app link")
 
         for class_name in ("connectors-wide", "connectors-compact"):
             connectors = tags_with_class(home, class_name)
@@ -329,14 +353,18 @@ def check_site(site: Path = SITE) -> list[str]:
 
         for required_text in (
             "Reminders on",
-            "Email support",
+            "App information",
+            "Opens email and website details",
             "Crown value",
-            "1-59 min, then 1 hour",
-            "Hourly minute",
-            "At :45 every hour",
+            "Set to every 45 minutes",
             "Next reminder",
             "Mint means armed",
+            "Loop Alarm information",
+            "Done",
+            APPROVED_EMAIL,
+            PUBLIC_BASE,
             "Upcoming:",
+            "11:15 AM",
         ):
             if required_text not in home.text:
                 fail(errors, "index.html", f"missing homepage interface label: {required_text!r}")
@@ -349,7 +377,6 @@ def check_site(site: Path = SITE) -> list[str]:
                 fail(errors, "index.html", f"static watch rendering must not contain <{forbidden_tag}>")
         if "support/" in home_source:
             fail(errors, "index.html", "must not advertise the removed support route")
-
     stylesheet = site / "styles.css"
     if not stylesheet.is_file():
         fail(errors, "styles.css", "required stylesheet is missing")
