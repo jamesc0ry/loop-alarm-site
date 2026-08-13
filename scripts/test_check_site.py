@@ -14,7 +14,6 @@ from scripts import check_site
 SITE_FILES = (
     Path("index.html"),
     Path("privacy/index.html"),
-    Path("support/index.html"),
     Path("styles.css"),
     Path("favicon.svg"),
     Path(".nojekyll"),
@@ -51,8 +50,8 @@ class CheckSiteTests(unittest.TestCase):
 
     def test_old_placeholder_and_stale_preview_are_rejected(self) -> None:
         self.replace(
-            "support/index.html",
-            "Email us for help with Loop Alarm.",
+            "privacy/index.html",
+            "For privacy questions",
             f"{check_site.OLD_CONTACT_PLACEHOLDER} Private preview.",
         )
 
@@ -62,14 +61,14 @@ class CheckSiteTests(unittest.TestCase):
         self.assert_has_error(errors, "stale pre-publication wording")
 
     def test_private_project_subpath_is_rejected(self) -> None:
-        self.replace("index.html", "Loop Alarm features", "custom-hourly-reminders features")
+        self.replace("index.html", "Interface annotations", "custom-hourly-reminders annotations")
 
         errors = check_site.check_site(self.site)
 
         self.assert_has_error(errors, "stale pre-publication wording")
 
     def test_guessed_contact_is_rejected(self) -> None:
-        self.replace("support/index.html", check_site.APPROVED_EMAIL, "support@loopalarm.co")
+        self.replace("privacy/index.html", check_site.APPROVED_EMAIL, "support@loopalarm.co")
 
         errors = check_site.check_site(self.site)
 
@@ -86,17 +85,17 @@ class CheckSiteTests(unittest.TestCase):
         errors = check_site.check_site(self.site)
 
         self.assert_has_error(errors, "unexpected contact link")
-        self.assert_has_error(errors, "must link directly to the approved email address")
+        self.assert_has_error(errors, "support envelope must link directly to the approved email")
 
     def test_root_relative_link_is_rejected(self) -> None:
-        self.replace("index.html", 'href="support/"', 'href="/support/"')
+        self.replace("index.html", 'href="privacy/"', 'href="/privacy/"')
 
         errors = check_site.check_site(self.site)
 
         self.assert_has_error(errors, "root-relative URLs break at the GitHub project Pages base path")
 
     def test_broken_internal_link_is_rejected(self) -> None:
-        self.replace("index.html", 'href="support/"', 'href="missing/"')
+        self.replace("index.html", 'href="privacy/"', 'href="missing/"')
 
         errors = check_site.check_site(self.site)
 
@@ -105,14 +104,43 @@ class CheckSiteTests(unittest.TestCase):
     def test_unlisted_html_page_links_are_checked(self) -> None:
         extra_page = self.site / "unlisted.html"
         shutil.copyfile(self.site / "index.html", extra_page)
-        extra_page.write_text(
-            extra_page.read_text(encoding="utf-8").replace('href="support/"', 'href="missing/"'),
-            encoding="utf-8",
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "unexpected public HTML route")
+
+    def test_removed_support_route_is_rejected(self) -> None:
+        support_page = self.site / "support/index.html"
+        support_page.parent.mkdir()
+        shutil.copyfile(self.site / "privacy/index.html", support_page)
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "support/index.html: unexpected public HTML route")
+
+    def test_homepage_requires_the_annotated_watch_contract(self) -> None:
+        self.replace("index.html", "annotation-hourly", "missing-hourly-annotation")
+        self.replace(
+            "index.html",
+            'class="interval-dial" aria-hidden="true">1</div>',
+            'class="interval-dial" aria-hidden="true"><button>1</button></div>',
         )
 
         errors = check_site.check_site(self.site)
 
-        self.assert_has_error(errors, "unlisted.html: broken internal link 'missing/'")
+        self.assert_has_error(errors, "expected exactly one .annotation-hourly")
+        self.assert_has_error(errors, "static watch rendering must not contain <button>")
+
+    def test_connectors_must_stay_out_of_accessibility_tree(self) -> None:
+        self.replace(
+            "index.html",
+            'class="connectors connectors-wide" viewBox="0 0 760 540" aria-hidden="true"',
+            'class="connectors connectors-wide" viewBox="0 0 760 540" aria-hidden="false"',
+        )
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, ".connectors-wide must be a single hidden decorative connector")
 
     def test_broken_fragment_is_rejected(self) -> None:
         self.replace("privacy/index.html", 'href="#app-data"', 'href="#missing"')

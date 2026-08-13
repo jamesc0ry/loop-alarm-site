@@ -4,9 +4,8 @@
 
 - <https://jamesc0ry.github.io/loop-alarm-site/>
 - <https://jamesc0ry.github.io/loop-alarm-site/privacy/>
-- <https://jamesc0ry.github.io/loop-alarm-site/support/>
 
-All links between site files are relative so the pages work locally and below the `loop-alarm-site/` GitHub project path. Canonical metadata and the sitemap use the public URLs above.
+The site intentionally has only these two routes. The home page is an annotated, static rendering of the normal Apple Watch reminder-configuration screen. All links between site files are relative so the pages work locally and below the `loop-alarm-site/` GitHub project path. Canonical metadata and the sitemap use the public URLs above.
 
 ## Local preview and checks
 
@@ -18,7 +17,7 @@ python3 -m unittest scripts.test_check_site
 python3 -m http.server 8000
 ```
 
-Then open <http://127.0.0.1:8000/>. The validator checks page structure and accessibility metadata, canonical URLs, every local link and fragment, privacy wording, the exact approved email, and the absence of scripts, forms, trackers, unapproved contacts, stale pre-publication wording, and root-relative links.
+Then open <http://127.0.0.1:8000/>. The validator checks the two-route content contract, annotated watch structure, static-control semantics, accessibility metadata, canonical URLs, every local link and fragment, privacy wording, the exact approved email, and the absence of scripts, forms, trackers, unapproved contacts, stale pre-publication wording, and root-relative links.
 
 ## Privacy policy maintenance
 
