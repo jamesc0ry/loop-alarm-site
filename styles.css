@@ -25,7 +25,7 @@ body {
   min-height: 100vh;
   margin: 0;
   background:
-    radial-gradient(circle at 50% 44%, rgb(45 156 119 / 10%), transparent 29rem),
+    radial-gradient(circle at 50% 44%, rgb(45 156 119 / 12.5%), transparent 43.5rem),
     var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
@@ -173,7 +173,7 @@ footer nav a[aria-current="page"] {
   transition: opacity 160ms ease, visibility 160ms ease;
 }
 
-.connectors path {
+.connectors line {
   fill: none;
   stroke: rgb(179 246 221 / 62%);
   stroke-width: 1;
@@ -239,11 +239,6 @@ footer nav a[aria-current="page"] {
 .annotation-toggle {
   top: 51px;
   left: 16px;
-}
-
-.annotation-information {
-  top: 51px;
-  right: 16px;
 }
 
 .annotation-interval {
@@ -718,12 +713,8 @@ footer p {
 
   .annotation-toggle {
     top: 2.73%;
-    left: 2.78%;
-  }
-
-  .annotation-information {
-    top: 2.73%;
-    right: 2.78%;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .annotation-interval,
@@ -815,7 +806,7 @@ footer p {
     border: 1px solid CanvasText;
   }
 
-  .connectors path {
+  .connectors line {
     stroke: CanvasText;
   }
 }

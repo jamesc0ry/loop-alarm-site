@@ -310,7 +310,6 @@ def check_site(site: Path = SITE) -> list[str]:
             "interval-unit",
             "upcoming-status",
             "annotation-toggle",
-            "annotation-information",
             "annotation-interval",
             "annotation-upcoming",
         )
@@ -351,10 +350,20 @@ def check_site(site: Path = SITE) -> list[str]:
             if len(connectors) != 1 or connectors[0][1].get("aria-hidden") != "true":
                 fail(errors, "index.html", f".{class_name} must be a single hidden decorative connector")
 
+        connector_lines = [attrs for tag, attrs in home.tags if tag == "line"]
+        if len(connector_lines) != 6 or any(
+            not all(coordinate in attrs for coordinate in ("x1", "y1", "x2", "y2"))
+            for attrs in connector_lines
+        ):
+            fail(errors, "index.html", "connectors must contain exactly six straight SVG lines")
+
+        if tags_with_class(home, "annotation-information"):
+            fail(errors, "index.html", "homepage must not contain an app information annotation")
+        if any(tag == "footer" for tag, _ in home.tags):
+            fail(errors, "index.html", "homepage must not contain a footer")
+
         for required_text in (
             "Reminders on",
-            "App information",
-            "Opens email and website details",
             "Crown value",
             "Set to every 45 minutes",
             "Next reminder",

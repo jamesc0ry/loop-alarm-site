@@ -119,7 +119,7 @@ class CheckSiteTests(unittest.TestCase):
         self.assert_has_error(errors, "support/index.html: unexpected public HTML route")
 
     def test_homepage_requires_the_annotated_watch_contract(self) -> None:
-        self.replace("index.html", "annotation-information", "missing-information-annotation")
+        self.replace("index.html", "annotation-toggle", "missing-toggle-annotation")
         self.replace(
             "index.html",
             'class="interval-dial" aria-hidden="true">45</div>',
@@ -128,8 +128,32 @@ class CheckSiteTests(unittest.TestCase):
 
         errors = check_site.check_site(self.site)
 
-        self.assert_has_error(errors, "expected exactly one .annotation-information")
+        self.assert_has_error(errors, "expected exactly one .annotation-toggle")
         self.assert_has_error(errors, "static watch rendering must not contain <button>")
+
+    def test_homepage_rejects_information_annotation_and_footer(self) -> None:
+        self.replace(
+            "index.html",
+            '<ol class="annotations" aria-label="Interface annotations">',
+            '<ol class="annotations" aria-label="Interface annotations"><li class="annotation-information">App information</li>',
+        )
+        self.replace("index.html", "</body>", "<footer>Loop Alarm</footer></body>")
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "homepage must not contain an app information annotation")
+        self.assert_has_error(errors, "homepage must not contain a footer")
+
+    def test_connectors_must_be_single_straight_lines(self) -> None:
+        self.replace(
+            "index.html",
+            '<line x1="194" y1="88" x2="349" y2="136"></line>',
+            '<path d="M194 88 H270 L349 136"></path>',
+        )
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "connectors must contain exactly six straight SVG lines")
 
     def test_information_screen_contract_is_enforced(self) -> None:
         self.replace("index.html", "<details class=\"information-control\">", "<div class=\"information-control\">")
