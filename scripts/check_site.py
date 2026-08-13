@@ -22,10 +22,6 @@ EXPECTED = {
         "Privacy Policy - Loop Alarm",
         f"{PUBLIC_BASE}privacy/",
     ),
-    Path("support/index.html"): (
-        "Support - Loop Alarm",
-        f"{PUBLIC_BASE}support/",
-    ),
 }
 APPROVED_EMAIL = "loopalarm.help@outlook.com"
 APPROVED_MAILTO = f"mailto:{APPROVED_EMAIL}"
@@ -128,6 +124,16 @@ def has_meta(parser: PageParser, key: str, value: str) -> bool:
     return any(tag == "meta" and attrs.get(key) == value for tag, attrs in parser.tags)
 
 
+def tags_with_class(
+    parser: PageParser, class_name: str
+) -> list[tuple[str, dict[str, str]]]:
+    return [
+        (tag, attrs)
+        for tag, attrs in parser.tags
+        if class_name in attrs.get("class", "").split()
+    ]
+
+
 def check_site(site: Path = SITE) -> list[str]:
     site = site.resolve()
     errors: list[str] = []
@@ -147,6 +153,9 @@ def check_site(site: Path = SITE) -> list[str]:
     for relative in EXPECTED:
         if relative not in pages:
             fail(errors, relative, "required file is missing")
+
+    for relative in sorted(set(pages) - set(EXPECTED)):
+        fail(errors, relative, "unexpected public HTML route; the site has only home and privacy")
 
     for relative, parser in pages.items():
         expected = EXPECTED.get(relative)
@@ -234,7 +243,7 @@ def check_site(site: Path = SITE) -> list[str]:
                 continue
             _check_local_reference(errors, pages, relative, href, site, "link")
 
-        for destination in (site / "privacy/index.html", site / "support/index.html"):
+        for destination in (site / "index.html", site / "privacy/index.html"):
             discovered = False
             for href in parser.links:
                 try:
@@ -250,10 +259,6 @@ def check_site(site: Path = SITE) -> list[str]:
         for email in EMAIL_PATTERN.findall(source):
             if email != APPROVED_EMAIL:
                 fail(errors, relative, f"unapproved email address: {email}")
-        if APPROVED_EMAIL not in parser.text:
-            fail(errors, relative, "must name the approved email address")
-        if APPROVED_MAILTO not in parser.links:
-            fail(errors, relative, "must link directly to the approved email address")
         if OLD_CONTACT_PLACEHOLDER in source:
             fail(errors, relative, "old support contact placeholder found")
         if re.search(r"\b(?:TODO|TBD|example\.(?:com|org|net))\b", source, re.IGNORECASE):
@@ -280,10 +285,70 @@ def check_site(site: Path = SITE) -> list[str]:
         ):
             if required not in privacy.text:
                 fail(errors, "privacy/index.html", f"missing required policy statement: {required!r}")
+        if APPROVED_EMAIL not in privacy.text:
+            fail(errors, "privacy/index.html", "must name the approved email address")
+        if APPROVED_MAILTO not in privacy.links:
+            fail(errors, "privacy/index.html", "must link directly to the approved email address")
 
-    support = pages.get(Path("support/index.html"))
-    if support and "Email us for help with Loop Alarm." not in support.text:
-        fail(errors, "support/index.html", "missing public support availability statement")
+    home = pages.get(Path("index.html"))
+    if home:
+        home_source = sources[Path("index.html")]
+        required_classes = (
+            "app-showcase",
+            "watch-figure",
+            "watch-case",
+            "watch-screen",
+            "digital-crown",
+            "screen-toggle",
+            "support-envelope",
+            "interval-dial",
+            "hourly-unit",
+            "upcoming-status",
+            "annotation-toggle",
+            "annotation-support",
+            "annotation-interval",
+            "annotation-hourly",
+            "annotation-upcoming",
+        )
+        for class_name in required_classes:
+            if len(tags_with_class(home, class_name)) != 1:
+                fail(errors, "index.html", f"expected exactly one .{class_name}")
+
+        support_links = [
+            attrs
+            for tag, attrs in tags_with_class(home, "support-envelope")
+            if tag == "a" and attrs.get("href") == APPROVED_MAILTO
+        ]
+        if len(support_links) != 1:
+            fail(errors, "index.html", "support envelope must link directly to the approved email")
+
+        for class_name in ("connectors-wide", "connectors-compact"):
+            connectors = tags_with_class(home, class_name)
+            if len(connectors) != 1 or connectors[0][1].get("aria-hidden") != "true":
+                fail(errors, "index.html", f".{class_name} must be a single hidden decorative connector")
+
+        for required_text in (
+            "Reminders on",
+            "Email support",
+            "Crown value",
+            "1-59 min, then 1 hour",
+            "Hourly minute",
+            "At :45 every hour",
+            "Next reminder",
+            "Mint means armed",
+            "Upcoming:",
+        ):
+            if required_text not in home.text:
+                fail(errors, "index.html", f"missing homepage interface label: {required_text!r}")
+
+        for forbidden_class in ("hero", "feature-grid", "privacy-callout", "faq", "contact-card"):
+            if tags_with_class(home, forbidden_class):
+                fail(errors, "index.html", f"forbidden homepage marketing section: .{forbidden_class}")
+        for forbidden_tag in ("button", "input", "select", "textarea"):
+            if forbidden_tag in [tag for tag, _ in home.tags]:
+                fail(errors, "index.html", f"static watch rendering must not contain <{forbidden_tag}>")
+        if "support/" in home_source:
+            fail(errors, "index.html", "must not advertise the removed support route")
 
     stylesheet = site / "styles.css"
     if not stylesheet.is_file():
