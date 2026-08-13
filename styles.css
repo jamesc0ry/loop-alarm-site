@@ -376,9 +376,10 @@ footer nav a[aria-current="page"] {
   position: absolute;
   z-index: 2;
   top: 0;
-  left: 74.63%;
+  right: 3.91%;
   display: grid;
   width: max(21.46%, 44px);
+  min-width: 44px;
   min-height: 44px;
   aspect-ratio: 1;
   place-items: center;
@@ -462,7 +463,9 @@ footer nav a[aria-current="page"] {
 .information-control[open] summary {
   top: 75%;
   left: 24%;
+  right: auto;
   width: 52%;
+  min-width: 44px;
   min-height: 44px;
   aspect-ratio: auto;
   border-radius: 999px;
