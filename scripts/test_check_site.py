@@ -78,14 +78,14 @@ class CheckSiteTests(unittest.TestCase):
     def test_modified_mailto_is_rejected(self) -> None:
         self.replace(
             "index.html",
-            check_site.APPROVED_MAILTO,
+            check_site.APPROVED_SUPPORT_MAILTO,
             f"{check_site.APPROVED_MAILTO}?subject=Help",
         )
 
         errors = check_site.check_site(self.site)
 
         self.assert_has_error(errors, "unexpected contact link")
-        self.assert_has_error(errors, "support envelope must link directly to the approved email")
+        self.assert_has_error(errors, "information screen email must match the app support link")
 
     def test_root_relative_link_is_rejected(self) -> None:
         self.replace("index.html", 'href="privacy/"', 'href="/privacy/"')
@@ -119,17 +119,27 @@ class CheckSiteTests(unittest.TestCase):
         self.assert_has_error(errors, "support/index.html: unexpected public HTML route")
 
     def test_homepage_requires_the_annotated_watch_contract(self) -> None:
-        self.replace("index.html", "annotation-hourly", "missing-hourly-annotation")
+        self.replace("index.html", "annotation-information", "missing-information-annotation")
         self.replace(
             "index.html",
-            'class="interval-dial" aria-hidden="true">1</div>',
-            'class="interval-dial" aria-hidden="true"><button>1</button></div>',
+            'class="interval-dial" aria-hidden="true">45</div>',
+            'class="interval-dial" aria-hidden="true"><button>45</button></div>',
         )
 
         errors = check_site.check_site(self.site)
 
-        self.assert_has_error(errors, "expected exactly one .annotation-hourly")
+        self.assert_has_error(errors, "expected exactly one .annotation-information")
         self.assert_has_error(errors, "static watch rendering must not contain <button>")
+
+    def test_information_screen_contract_is_enforced(self) -> None:
+        self.replace("index.html", "<details class=\"information-control\">", "<div class=\"information-control\">")
+        self.replace("index.html", "</details>", "</div>")
+        self.replace("index.html", check_site.PUBLIC_BASE, "https://example.org/")
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "information control must be one native <details> disclosure")
+        self.assert_has_error(errors, "information screen website must match the public app link")
 
     def test_connectors_must_stay_out_of_accessibility_tree(self) -> None:
         self.replace(
