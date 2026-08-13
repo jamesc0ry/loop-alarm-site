@@ -6,6 +6,7 @@
   <meta name="description" content="Privacy policy for the Loop Alarm Apple Watch app.">
   <meta name="theme-color" content="#070b0a">
   <title>Privacy Policy - Loop Alarm</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'">
   <link rel="canonical" href="https://jamesc0ry.github.io/loop-alarm-site/privacy/">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="../styles.css">
@@ -18,7 +19,7 @@
       <span>Loop Alarm</span>
     </a>
     <nav aria-label="Primary navigation">
-      <a aria-current="page" href="./">Privacy</a>
+      <a href="#contact">Privacy/Contact</a>
     </nav>
   </header>
 
@@ -65,7 +66,7 @@
 
         <section id="website">
           <h2>This website</h2>
-          <p>This static site is hosted with GitHub Pages. The site does not add analytics, forms, tracking scripts, advertising, or cookies through site code. GitHub states that it logs visitors' IP addresses for security purposes. See <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection">GitHub's Pages documentation</a> for details.</p>
+          <p>This static site is hosted with GitHub Pages. Its only JavaScript reveals the contact email after you activate the control below. The site does not add analytics, forms, tracking scripts, advertising, or cookies through site code. GitHub states that it logs visitors' IP addresses for security purposes. See <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection">GitHub's Pages documentation</a> for details.</p>
         </section>
 
         <section id="changes">
@@ -75,7 +76,7 @@
 
         <section id="contact">
           <h2>Contact</h2>
-          <p>For privacy questions, email Loop Alarm Support at <a href="mailto:loopalarm.help@outlook.com">loopalarm.help@outlook.com</a>.</p>
+          <p>For privacy questions, contact Loop Alarm Support: <span class="contact-reveal" data-contact aria-live="polite"><noscript>Email contact remains available from the information screen on the Loop Alarm homepage.</noscript></span></p>
         </section>
       </article>
     </div>
@@ -87,5 +88,6 @@
       <a aria-current="page" href="./">Privacy</a>
     </nav>
   </footer>
+  <script src="../contact.js" defer></script>
 </body>
 </html>

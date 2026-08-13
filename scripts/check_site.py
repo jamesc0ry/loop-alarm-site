@@ -26,6 +26,8 @@ EXPECTED = {
 APPROVED_EMAIL = "loopalarm.help@outlook.com"
 APPROVED_MAILTO = f"mailto:{APPROVED_EMAIL}"
 APPROVED_SUPPORT_MAILTO = f"{APPROVED_MAILTO}?subject=Loop%20Alarm%20Support"
+HOME_CSP = "default-src 'none'; style-src 'self'; img-src 'self'; script-src 'none'; base-uri 'none'; form-action 'none'"
+PRIVACY_CSP = "default-src 'none'; style-src 'self'; img-src 'self'; script-src 'self'; base-uri 'none'; form-action 'none'"
 OLD_CONTACT_PLACEHOLDER = "Support contact will be added before public launch."
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 STALE_PUBLIC_MARKERS = (
@@ -170,7 +172,7 @@ def check_site(site: Path = SITE) -> list[str]:
         tag_names = [tag for tag, _ in parser.tags]
         if tag_names.count("h1") != 1:
             fail(errors, relative, "must contain exactly one h1")
-        for forbidden in ("script", "form", "iframe"):
+        for forbidden in ("form", "iframe"):
             if forbidden in tag_names:
                 fail(errors, relative, f"unexpected <{forbidden}> element")
 
@@ -191,6 +193,24 @@ def check_site(site: Path = SITE) -> list[str]:
             for tag, attrs in parser.tags
         ):
             fail(errors, relative, "missing page description metadata")
+
+        expected_csp = HOME_CSP if relative == Path("index.html") else PRIVACY_CSP
+        content_security_policies = [
+            attrs.get("content", "")
+            for tag, attrs in parser.tags
+            if tag == "meta" and attrs.get("http-equiv", "").lower() == "content-security-policy"
+        ]
+        if content_security_policies != [expected_csp]:
+            fail(errors, relative, f"expected one exact content security policy {expected_csp!r}")
+
+        scripts = [attrs for tag, attrs in parser.tags if tag == "script"]
+        expected_scripts = (
+            []
+            if relative == Path("index.html")
+            else [{"src": "../contact.js", "defer": ""}]
+        )
+        if scripts != expected_scripts:
+            fail(errors, relative, f"expected approved scripts {expected_scripts!r}, found {scripts!r}")
         if "main-content" not in parser.ids:
             fail(errors, relative, "main content must expose id=\"main-content\"")
         if not any(
@@ -276,6 +296,7 @@ def check_site(site: Path = SITE) -> list[str]:
 
     privacy = pages.get(Path("privacy/index.html"))
     if privacy:
+        privacy_source = sources[Path("privacy/index.html")]
         for required in (
             "Effective August 12, 2026",
             "does not collect personal data",
@@ -283,17 +304,34 @@ def check_site(site: Path = SITE) -> list[str]:
             "local Apple Watch storage",
             "hosted with GitHub Pages",
             "logs visitors' IP addresses for security purposes",
+            "Its only JavaScript reveals the contact email after you activate the control below.",
+            "Email contact remains available from the information screen on the Loop Alarm homepage.",
         ):
             if required not in privacy.text:
                 fail(errors, "privacy/index.html", f"missing required policy statement: {required!r}")
-        if APPROVED_EMAIL not in privacy.text:
-            fail(errors, "privacy/index.html", "must name the approved email address")
-        if APPROVED_MAILTO not in privacy.links:
-            fail(errors, "privacy/index.html", "must link directly to the approved email address")
+        if APPROVED_EMAIL in privacy_source or any(
+            urlparse(href).scheme == "mailto" for href in privacy.links
+        ):
+            fail(errors, "privacy/index.html", "must not expose the contact address before activation")
+
+        contact_reveals = tags_with_class(privacy, "contact-reveal")
+        if (
+            len(contact_reveals) != 1
+            or contact_reveals[0][0] != "span"
+            or "data-contact" not in contact_reveals[0][1]
+            or contact_reveals[0][1].get("aria-live") != "polite"
+        ):
+            fail(errors, "privacy/index.html", "contact reveal must expose one polite live region")
+        if len([tag for tag, _ in privacy.tags if tag == "noscript"]) != 1:
+            fail(errors, "privacy/index.html", "contact reveal must provide one no-JavaScript fallback")
+        if '<a href="#contact">Privacy/Contact</a>' not in privacy_source:
+            fail(errors, "privacy/index.html", "header must link Privacy/Contact to #contact")
 
     home = pages.get(Path("index.html"))
     if home:
         home_source = sources[Path("index.html")]
+        if '<a href="privacy/#contact">Privacy/Contact</a>' not in home_source:
+            fail(errors, "index.html", "header must link Privacy/Contact to privacy/#contact")
         required_classes = (
             "app-showcase",
             "watch-figure",
@@ -310,7 +348,6 @@ def check_site(site: Path = SITE) -> list[str]:
             "interval-unit",
             "upcoming-status",
             "annotation-toggle",
-            "annotation-information",
             "annotation-interval",
             "annotation-upcoming",
         )
@@ -351,10 +388,20 @@ def check_site(site: Path = SITE) -> list[str]:
             if len(connectors) != 1 or connectors[0][1].get("aria-hidden") != "true":
                 fail(errors, "index.html", f".{class_name} must be a single hidden decorative connector")
 
+        connector_lines = [attrs for tag, attrs in home.tags if tag == "line"]
+        if len(connector_lines) != 6 or any(
+            not all(coordinate in attrs for coordinate in ("x1", "y1", "x2", "y2"))
+            for attrs in connector_lines
+        ):
+            fail(errors, "index.html", "connectors must contain exactly six straight SVG lines")
+
+        if tags_with_class(home, "annotation-information"):
+            fail(errors, "index.html", "homepage must not contain an app information annotation")
+        if any(tag == "footer" for tag, _ in home.tags):
+            fail(errors, "index.html", "homepage must not contain a footer")
+
         for required_text in (
             "Reminders on",
-            "App information",
-            "Opens email and website details",
             "Crown value",
             "Set to every 45 minutes",
             "Next reminder",
@@ -387,7 +434,34 @@ def check_site(site: Path = SITE) -> list[str]:
         if re.search(r"url\(\s*['\"]?(?:https?:)?//", stylesheet_source, re.IGNORECASE):
             fail(errors, "styles.css", "unexpected external asset URL")
 
-    for required_file in ("favicon.svg", ".nojekyll", "robots.txt", "sitemap.xml"):
+    contact_script = site / "contact.js"
+    if not contact_script.is_file():
+        fail(errors, "contact.js", "required contact reveal script is missing")
+    else:
+        contact_source = contact_script.read_text(encoding="utf-8")
+        if APPROVED_EMAIL in contact_source:
+            fail(errors, "contact.js", "must not contain the plain contact address")
+        activation = contact_source.find('addEventListener("click"')
+        construction = contact_source.find("const address")
+        if activation < 0 or construction < activation:
+            fail(errors, "contact.js", "must construct the contact address only after activation")
+        for required_marker in (
+            'document.querySelector("[data-contact]")',
+            'reveal.type = "button"',
+            'reveal.textContent = "Reveal email address"',
+            'link.href = `mailto:${address}`',
+            "contact.replaceChildren(link)",
+            "link.focus()",
+        ):
+            if required_marker not in contact_source:
+                fail(errors, "contact.js", f"missing contact reveal behavior: {required_marker!r}")
+        if "innerHTML" in contact_source:
+            fail(errors, "contact.js", "contact reveal must not use innerHTML")
+        for marker in TRACKER_MARKERS:
+            if re.search(marker, contact_source, re.IGNORECASE):
+                fail(errors, "contact.js", f"unexpected tracker marker: {marker}")
+
+    for required_file in ("favicon.svg", ".nojekyll", "robots.txt", "sitemap.xml", "contact.js"):
         if not (site / required_file).is_file():
             fail(errors, required_file, "required file is missing")
 

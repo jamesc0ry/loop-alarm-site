@@ -15,6 +15,7 @@ SITE_FILES = (
     Path("index.html"),
     Path("privacy/index.html"),
     Path("styles.css"),
+    Path("contact.js"),
     Path("favicon.svg"),
     Path(".nojekyll"),
     Path("robots.txt"),
@@ -68,7 +69,7 @@ class CheckSiteTests(unittest.TestCase):
         self.assert_has_error(errors, "stale pre-publication wording")
 
     def test_guessed_contact_is_rejected(self) -> None:
-        self.replace("privacy/index.html", check_site.APPROVED_EMAIL, "support@loopalarm.co")
+        self.replace("index.html", check_site.APPROVED_EMAIL, "support@loopalarm.co")
 
         errors = check_site.check_site(self.site)
 
@@ -88,18 +89,18 @@ class CheckSiteTests(unittest.TestCase):
         self.assert_has_error(errors, "information screen email must match the app support link")
 
     def test_root_relative_link_is_rejected(self) -> None:
-        self.replace("index.html", 'href="privacy/"', 'href="/privacy/"')
+        self.replace("index.html", 'href="privacy/#contact"', 'href="/privacy/#contact"')
 
         errors = check_site.check_site(self.site)
 
         self.assert_has_error(errors, "root-relative URLs break at the GitHub project Pages base path")
 
     def test_broken_internal_link_is_rejected(self) -> None:
-        self.replace("index.html", 'href="privacy/"', 'href="missing/"')
+        self.replace("index.html", 'href="privacy/#contact"', 'href="missing/#contact"')
 
         errors = check_site.check_site(self.site)
 
-        self.assert_has_error(errors, "broken internal link 'missing/'")
+        self.assert_has_error(errors, "broken internal link 'missing/#contact'")
 
     def test_unlisted_html_page_links_are_checked(self) -> None:
         extra_page = self.site / "unlisted.html"
@@ -119,7 +120,7 @@ class CheckSiteTests(unittest.TestCase):
         self.assert_has_error(errors, "support/index.html: unexpected public HTML route")
 
     def test_homepage_requires_the_annotated_watch_contract(self) -> None:
-        self.replace("index.html", "annotation-information", "missing-information-annotation")
+        self.replace("index.html", "annotation-toggle", "missing-toggle-annotation")
         self.replace(
             "index.html",
             'class="interval-dial" aria-hidden="true">45</div>',
@@ -128,8 +129,90 @@ class CheckSiteTests(unittest.TestCase):
 
         errors = check_site.check_site(self.site)
 
-        self.assert_has_error(errors, "expected exactly one .annotation-information")
+        self.assert_has_error(errors, "expected exactly one .annotation-toggle")
         self.assert_has_error(errors, "static watch rendering must not contain <button>")
+
+    def test_homepage_rejects_information_annotation_and_footer(self) -> None:
+        self.replace(
+            "index.html",
+            '<ol class="annotations" aria-label="Interface annotations">',
+            '<ol class="annotations" aria-label="Interface annotations"><li class="annotation-information">App information</li>',
+        )
+        self.replace("index.html", "</body>", "<footer>Loop Alarm</footer></body>")
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "homepage must not contain an app information annotation")
+        self.assert_has_error(errors, "homepage must not contain a footer")
+
+    def test_connectors_must_be_single_straight_lines(self) -> None:
+        self.replace(
+            "index.html",
+            '<line x1="194" y1="88" x2="349" y2="136"></line>',
+            '<path d="M194 88 H270 L349 136"></path>',
+        )
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "connectors must contain exactly six straight SVG lines")
+
+    def test_headers_must_link_directly_to_contact(self) -> None:
+        self.replace("index.html", "Privacy/Contact", "Privacy")
+        self.replace("privacy/index.html", 'href="#contact">Privacy/Contact', 'href="./">Privacy')
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "header must link Privacy/Contact to privacy/#contact")
+        self.assert_has_error(errors, "header must link Privacy/Contact to #contact")
+
+    def test_contact_reveal_contract_is_enforced(self) -> None:
+        self.replace("privacy/index.html", "data-contact", "missing-contact-hook")
+        self.replace("privacy/index.html", "<noscript>", "<span>")
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "contact reveal must expose one polite live region")
+        self.assert_has_error(errors, "contact reveal must provide one no-JavaScript fallback")
+
+    def test_privacy_page_must_not_expose_contact_before_activation(self) -> None:
+        self.replace(
+            "privacy/index.html",
+            "For privacy questions, contact Loop Alarm Support:",
+            f'For privacy questions, email <a href="{check_site.APPROVED_MAILTO}">{check_site.APPROVED_EMAIL}</a>:',
+        )
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "must not expose the contact address before activation")
+
+    def test_contact_script_is_narrow_and_obfuscated(self) -> None:
+        self.replace(
+            "contact.js",
+            'const address = ["pleh.mralapool", "moc.kooltuo"]',
+            f'const address = "{check_site.APPROVED_EMAIL}"',
+        )
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "must not contain the plain contact address")
+
+    def test_content_security_policies_are_page_specific(self) -> None:
+        self.replace("index.html", "script-src 'none'", "script-src 'self'")
+        self.replace("privacy/index.html", "script-src 'self'", "script-src 'unsafe-inline'")
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "index.html: expected one exact content security policy")
+        self.assert_has_error(errors, "privacy/index.html: expected one exact content security policy")
+
+    def test_only_privacy_page_may_load_the_contact_script(self) -> None:
+        self.replace("index.html", "</body>", '<script src="contact.js" defer></script></body>')
+        self.replace("privacy/index.html", '<script src="../contact.js" defer></script>', "")
+
+        errors = check_site.check_site(self.site)
+
+        self.assert_has_error(errors, "index.html: expected approved scripts []")
+        self.assert_has_error(errors, "privacy/index.html: expected approved scripts")
 
     def test_information_screen_contract_is_enforced(self) -> None:
         self.replace("index.html", "<details class=\"information-control\">", "<div class=\"information-control\">")
