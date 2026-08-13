@@ -368,6 +368,15 @@ footer nav a[aria-current="page"] {
   color: var(--mint);
 }
 
+.support-envelope::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  content: "";
+}
+
 .support-envelope:hover {
   background: rgb(99 230 190 / 22%);
 }
