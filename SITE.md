@@ -5,7 +5,7 @@
 - <https://jamesc0ry.github.io/loop-alarm-site/>
 - <https://jamesc0ry.github.io/loop-alarm-site/privacy/>
 
-The site intentionally has only these two routes. The home page is an annotated rendering of the normal Apple Watch reminder-configuration screen, with a script-free disclosure that mirrors the app's information sheet. All links between site files are relative so the pages work locally and below the `loop-alarm-site/` GitHub project path. Canonical metadata and the sitemap use the public URLs above.
+The site intentionally has only these two routes. The home page is an annotated rendering of the normal Apple Watch reminder-configuration screen, with a script-free disclosure that mirrors the app's information sheet. The privacy page uses one small local script to reveal its contact email only after activation. All links between site files are relative so the pages work locally and below the `loop-alarm-site/` GitHub project path. Canonical metadata and the sitemap use the public URLs above.
 
 ## Local preview and checks
 
@@ -17,11 +17,11 @@ python3 -m unittest scripts.test_check_site
 python3 -m http.server 8000
 ```
 
-Then open <http://127.0.0.1:8000/>. The validator checks the two-route content contract, annotated watch structure, native information disclosure, accessibility metadata, canonical URLs, every local link and fragment, privacy wording, the exact approved app-information links, and the absence of scripts, forms, trackers, unapproved contacts, stale pre-publication wording, and root-relative links.
+Then open <http://127.0.0.1:8000/>. The validator checks the two-route content contract, annotated watch structure, native information disclosure, accessible contact reveal, per-page content security policies, canonical URLs, every local link and fragment, privacy wording, the exact approved app-information links, and the absence of unapproved scripts, forms, trackers, contacts, stale pre-publication wording, and root-relative links.
 
 ## Privacy policy maintenance
 
-The policy describes the current app behavior: reminder configuration is stored locally on Apple Watch, and the app has no accounts, analytics, advertising, network service, tracking, or third-party SDK. The website has no JavaScript, forms, analytics, advertising, cookies set by site code, or remote assets. GitHub Pages hosting is disclosed separately because GitHub states that it logs visitor IP addresses for security.
+The policy describes the current app behavior: reminder configuration is stored locally on Apple Watch, and the app has no accounts, analytics, advertising, network service, tracking, or third-party SDK. The website has no forms, analytics, advertising, cookies set by site code, or remote assets. Its only JavaScript is `contact.js`, which creates the privacy-page reveal control and constructs the email link after activation. GitHub Pages hosting is disclosed separately because GitHub states that it logs visitor IP addresses for security.
 
 Before changing the privacy policy, verify it against the app release being documented. Change the effective date when the policy changes, then run the checks and inspect narrow and wide layouts.
 
